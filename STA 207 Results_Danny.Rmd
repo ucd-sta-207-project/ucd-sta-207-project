@@ -1,0 +1,530 @@
+---
+title: "STA 207 Project Star"
+author: "Danny Kuei"
+date: "2026-03-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+df_highschools <- read_sav("Documents/STA 207/Project/dataverse_files/PROJECT STAR/STAR_High_Schools.sav")
+df_comp_students <- read_sav("Documents/STA 207/Project/dataverse_files/PROJECT STAR/Comparison_Students.sav")
+df_students <- read_sav("Documents/STA 207/Project/dataverse_files/PROJECT STAR/STAR_Students.sav")
+df_k3schools <- read_sav("Documents/STA 207/Project/dataverse_files/PROJECT STAR/STAR_K-3_Schools.sav")
+```
+
+```{r}
+table(df_students$gkclasstype)
+```
+
+# Data Wrangling
+
+## Dataframe filters to check for sample size
+```{r}
+# Filter for no aide
+had_aide <- df_students$gkclasstype == 3 | 
+  df_students$g1classtype == 3 | 
+  df_students$g2classtype == 3 | 
+  df_students$g3classtype == 3
+
+df_students_noaide <- df_students[!had_aide,]
+nrow(df_students_noaide)
+```
+
+```{r}
+# Filter for no aide and were in study all 4 years
+df_students_noaide_4years <- df_students[!had_aide &
+                                         !is.na(df_students$gkclasstype) & 
+                                         !is.na(df_students$g1classtype) & 
+                                         !is.na(df_students$g2classtype) & 
+                                         !is.na(df_students$g3classtype), ]
+
+nrow(df_students_noaide_4years)
+```
+
+
+
+## Getting class type groups
+```{r}
+df_students_noaide_4years$class_group <- "Other" # initialize new columns
+
+# move column
+df_students_noaide_4years <- df_students_noaide_4years %>% 
+  relocate(class_group, .before = gkclasstype) %>%
+  relocate(yearssmall, .before = gkclasstype)
+```
+
+```{r}
+table(df_students$yearssmall)
+table(df_students_noaide_4years$yearssmall)
+```
+
+```{r}
+table(df_students$gkclasstype)
+table(df_students$g1classtype)
+table(df_students$g2classtype)
+table(df_students$g3classtype)
+
+table(df_students_noaide_4years$gkclasstype)
+table(df_students_noaide_4years$g1classtype)
+table(df_students_noaide_4years$g2classtype)
+table(df_students_noaide_4years$g3classtype)
+
+```
+
+
+```{r}
+# Change class type groups for each student
+
+# small 4 years
+ssss <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[ssss] <- "ssss"
+
+# small first 3 years, regular last year
+sssr <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[sssr] <- "sssr"
+
+
+# small first 2 years, regular last 2 years
+ssrr <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[ssrr] <- "ssrr"
+
+# small first year, regular last 3 years
+srrr <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[srrr] <- "srrr"
+
+# regular 4 years
+rrrr <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[rrrr] <- "rrrr"
+
+# regular first 3 years, small last year
+rrrs <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[rrrs] <- "rrrs"
+
+# regular first 2 year, small last 2 years
+rrss <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[rrss] <- "rrss"
+
+# regular first year, small last 3 years
+rsss <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[rsss] <- "rsss"
+
+# small 2 years, regular 1 year, then small last year
+ssrs <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[ssrs] <- "ssrs"
+
+# small first 1 year, regular 2 years, then small last year
+srrs <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[srrs] <- "srrs"
+
+
+# small first year, regular, small, regular
+srsr <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[srsr] <- "srsr"
+
+# small first year, regular, small, small
+srss <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[srss] <- "srss"
+
+# regular first 2 years, small, regular
+rrsr <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[rrsr] <- "rrsr"
+
+# regular first year, small, small, regular
+rssr <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[rssr] <- "rssr"
+
+# regular first year, small, regular, small
+rsrs <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[rsrs] <- "rsrs"
+
+# regular first year, small, regular, regular
+rsrr <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[rsrr] <- "rsrr"
+
+
+```
+
+
+```{r}
+table(df_students_noaide_4years$class_group)
+```
+The subset of all small and all regular has good sample size. The subsets of regular to small (rrrs, rrss, rsss) are also sufficient in which we could compare if multiple years leads to higher scores and we could comapre 3rd grade. However subsetting For the other way around small to regular (srrr, ssrr, sssr), the sample is lower. 
+
+
+## Class Type "Trend" Groups
+```{r}
+# initalize trend columns
+df_students_noaide_4years$trend_all <- "Other"
+df_students_noaide_4years$trend_k_to_1 <- "Other"
+df_students_noaide_4years$trend_1_to_2 <- "Other"
+df_students_noaide_4years$trend_2_to_3 <- "Other"
+
+# move column
+df_students_noaide_4years <- df_students_noaide_4years %>% 
+  relocate(trend_all, .before = class_group) %>%
+  relocate(trend_k_to_1, .before = class_group) %>%
+  relocate(trend_1_to_2, .before = class_group) %>%
+  relocate(trend_2_to_3, .before = class_group)
+```
+
+```{r}
+# Change class trend groups for each student
+
+# All 4 years of small vs regular has enough sample size so we can keep those the same
+df_students_noaide_4years$trend_all[df_students_noaide_4years$class_group == "ssss"] <- "constant_small"
+df_students_noaide_4years$trend_all[df_students_noaide_4years$class_group == "rrrr"] <- "constant_reg"
+
+# Small to regular trend (srrr, ssrr, sssr)
+subset <- c('srrr', 'ssrr', 'sssr')
+df_students_noaide_4years$trend_all[df_students_noaide_4years$class_group %in% subset] <- "small_to_reg"
+
+# Regular to small trend (rsss, rrss, rrrs)
+subset <- c('rsss', 'rrss', 'rrrs')
+df_students_noaide_4years$trend_all[df_students_noaide_4years$class_group %in% subset] <- "reg_to_small"
+```
+
+
+# Cumulative Effects Results
+## Compare Grade 3 scores approach
+```{r}
+# Subset for groups of interest (Regular --> Small)
+subset <- c('ssss', 'rsss', 'rrss', 'rrrs', 'rrrr')
+
+df <- df_students_noaide_4years[df_students_noaide_4years$class_group %in% subset, ]
+
+
+# Plot by trend (Regular --> Small)
+
+# math
+ggplot(df, aes(x = class_group, y = g3tmathss)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Class Size Trend on Grade 3 Math",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scale SAT Score")
+
+# reading
+ggplot(df, aes(x = class_group, y = g3treadss)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Class Size Trend on Grade 3 Reading",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scaled SAT Score")
+
+# table
+aggregate(cbind(g3tmathss, g3treadss, yearssmall) ~ class_group, 
+                           data = df, 
+                           FUN = mean, 
+                           na.rm = TRUE)
+```
+
+
+
+```{r}
+# Subset for groups of interest (Small --> Regular)
+subset <- c('srrr', 'ssrr', 'sssr', 'rrrr')
+
+df <- df_students_noaide_4years[df_students_noaide_4years$class_group %in% subset, ]
+
+
+# Plot by trend (Regular --> Small)
+
+# math
+ggplot(df, aes(x = class_group, y = g3tmathss)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Class Size Trend on Grade 3 Math",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scale SAT Score")
+
+# reading
+ggplot(df, aes(x = class_group, y = g3treadss)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Class Size Trend on Grade 3 Reading",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scaled SAT Score")
+
+# table
+aggregate(cbind(g3tmathss, g3treadss, yearssmall) ~ class_group, 
+                           data = df, 
+                           FUN = mean, 
+                           na.rm = TRUE)
+```
+
+
+
+```{r}
+# Subset for groups of interest (All)
+subset <- c('ssss', 'rsss', 'rrss', 'rrrs', 'rrrr', 'srrr', 'ssrr', 'sssr', 'srss', 'srrs', 'rssr', 'rsrr')
+
+df <- df_students_noaide_4years[df_students_noaide_4years$class_group %in% subset, ]
+
+
+# Plot by cumulative years
+
+# math
+ggplot(df, aes(x = yearssmall, y = g3tmathss)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Number of Year of Small Class vs Grade 3 Math",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scale SAT Score")
+
+
+# reading
+ggplot(df, aes(x = yearssmall, y = g3treadss)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Number of Year of Small Class vs Grade 3 Reading",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scaled SAT Score")
+
+# table
+aggregate(cbind(g3tmathss, g3treadss) ~ yearssmall, 
+                           data = df, 
+                           FUN = mean, 
+                           na.rm = TRUE)
+
+```
+
+```{r}
+# By trend
+
+# math
+ggplot(df_students_noaide_4years, aes(x = trend_all, y = g3tmathss)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Class Size Trend on Grade 3 Math",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scale SAT Score")
+
+# reading
+ggplot(df_students_noaide_4years, aes(x = trend_all, y = g3treadss)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Class Size Trend on Grade 3 Reading",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scaled SAT Score")
+
+# table
+aggregate(cbind(g3tmathss, g3treadss) ~ trend_all, 
+                           data = df_students_noaide_4years, 
+                           FUN = mean, 
+                           na.rm = TRUE)
+```
+
+
+
+## Weighted Average Approach
+```{r}
+# For now, just take mean scores
+df_students_noaide_4years$math_mean <- rowMeans(df_students_noaide_4years[, c("gktmathss", "g1tmathss", "g2tmathss", "g3tmathss")], na.rm = TRUE)
+df_students_noaide_4years$read_mean <- rowMeans(df_students_noaide_4years[, c("gktreadss", "g1treadss", "g2treadss", "g3treadss")], na.rm = TRUE)
+
+grade_means <- aggregate(cbind(gktmathss, g1tmathss, g2tmathss, g3tmathss) ~ yearssmall, 
+                         data = df_students_noaide_4years, 
+                         FUN = mean, na.rm = TRUE)
+
+df_long <- reshape(grade_means, 
+                   varying = c("gktmathss", "g1tmathss", "g2tmathss", "g3tmathss"), 
+                   v.names = "Mean_Score", 
+                   timevar = "Grade", 
+                   times = c("K", "1", "2", "3"), 
+                   direction = "long")
+
+# math
+ggplot(df_students_noaide_4years, aes(x = yearssmall, y = math_mean)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Class Size Years on Mean Grades",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scale SAT Score")
+
+# reading
+ggplot(df_students_noaide_4years, aes(x = yearssmall, y = read_mean)) +
+  stat_summary(fun = mean, geom = "bar") +
+  theme_minimal() +
+  labs(title = "Class Size Years on Mean Grades",
+       x = "Sequence (R=Regular, S=Small)", y = "Mean Scaled SAT Score")
+
+# table
+aggregate(cbind(math_mean, read_mean) ~ trend_all, 
+                           data = df_students_noaide_4years, 
+                           FUN = mean, 
+                           na.rm = TRUE)
+
+```
+
+
+
+# Looking at other factors (Socioeconomic, Gender, Race)
+
+## Number of years small class
+```{r}
+# Set factors and labels
+df_students_noaide_4years$gender <- factor(df_students_noaide_4years$gender, labels = c("Male", "Female")) # gender
+
+df_students_noaide_4years <- subset(df_students_noaide_4years, race %in% c(1,2))
+df_students_noaide_4years$race <- factor(df_students_noaide_4years$race, labels = c("White", "Black")) # ethnicity
+
+df_students_noaide_4years$gkfreelunch <- factor(df_students_noaide_4years$gkfreelunch, labels = c("Free", "Non-Free")) # free lunch
+```
+
+```{r}
+# additive model with socioeconmic (lunch free), years small, ethnicity, gender
+model_add <- lm(g3tmathss ~ yearssmall + gender + race + gkfreelunch, data = df_students_noaide_4years)
+summary(model_add)
+```
+
+```{r}
+# interactions model with socioeconmic (lunch free), years small, ethnicity, gender, yearssmall * race
+model_int1 <- lm(g3tmathss ~ yearssmall*race + gender + gkfreelunch, data = df_students_noaide_4years)
+summary(model_int1)
+```
+
+```{r}
+# interactions model with socioeconmic (lunch free), years small, ethnicity, gender, years small * gkfreelunch
+model_int2 <- lm(g3tmathss ~ yearssmall*gkfreelunch + gender + race, data = df_students_noaide_4years)
+summary(model_int2)
+```
+
+```{r}
+# interactions model with socioeconmic (lunch free), years small, ethnicity, gender, years small * gkfreelunch
+model_int3 <- lm(g3tmathss ~ yearssmall*gkfreelunch + yearssmall*race + gender, data = df_students_noaide_4years)
+summary(model_int3)
+```
+
+```{r}
+# Try AIC for best model
+AIC(model_add, model_int1)
+AIC(model_add, model_int2)
+AIC(model_add, model_int3)
+```
+
+```{r}
+# Try ANOVA for best model
+anova(model_add, model_int1)
+anova(model_add, model_int2)
+anova(model_add, model_int3)
+```
+
+By both AIC and likelihood ratio tests, it seems additive model is sufficient.
+
+## Small class pattern
+```{r}
+# if we are examining grade 3 math, we have to look at students of similar groups
+# Subset for groups of interest (Regular --> Small)
+subset <- c('ssss', 'rsss', 'rrss', 'rrrs', 'rrrr')
+
+df <- df_students_noaide_4years[df_students_noaide_4years$class_group %in% subset, ]
+nrow(df)
+```
+
+```{r}
+# additive model with socioeconmic (lunch free), years small, ethnicity, gender
+model_add <- lm(g3tmathss ~ class_group + gender + race + gkfreelunch, data = df)
+summary(model_add)
+```
+
+```{r}
+# interactions model with socioeconmic (lunch free), years small, ethnicity, gender, yearssmall * race
+model_int1 <- lm(g3tmathss ~ class_group*race + gender + gkfreelunch, data = df)
+summary(model_int1)
+```
+
+```{r}
+# interactions model with socioeconmic (lunch free), years small, ethnicity, gender, years small * gkfreelunch
+model_int2 <- lm(g3tmathss ~ class_group*gkfreelunch + gender + race, data = df)
+summary(model_int2)
+```
+
+```{r}
+# interactions model with socioeconmic (lunch free), years small, ethnicity, gender, years small * gkfreelunch
+model_int3 <- lm(g3tmathss ~ class_group*gkfreelunch + class_group*race + gender, data = df)
+summary(model_int3)
+```
+
+```{r}
+# Try AIC for best model
+AIC(model_add, model_int1)
+AIC(model_add, model_int2)
+AIC(model_add, model_int3)
+```
+
+```{r}
+# Try ANOVA for best model
+anova(model_add, model_int1)
+anova(model_add, model_int2)
+anova(model_add, model_int3)
+```
+
+  
+
+
+
