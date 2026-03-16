@@ -1,0 +1,533 @@
+---
+title: "STA 207 Results"
+author: "Danny Kuei"
+date: "2026-03-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(haven)
+library(ggplot2)
+library(dplyr)
+library(kableExtra)
+```
+
+```{r}
+df_highschools <- read_sav("Documents/STA 207/Project/dataverse_files/PROJECT STAR/STAR_High_Schools.sav")
+df_comp_students <- read_sav("Documents/STA 207/Project/dataverse_files/PROJECT STAR/Comparison_Students.sav")
+df_students <- read_sav("Documents/STA 207/Project/dataverse_files/PROJECT STAR/STAR_Students.sav")
+df_k3schools <- read_sav("Documents/STA 207/Project/dataverse_files/PROJECT STAR/STAR_K-3_Schools.sav")
+```
+
+```{r}
+table(df_students$gkclasstype)
+```
+
+# Data Wrangling
+
+## Dataframe filters to check for sample size
+```{r}
+# Filter for no aide
+had_aide <- df_students$gkclasstype == 3 | 
+  df_students$g1classtype == 3 | 
+  df_students$g2classtype == 3 | 
+  df_students$g3classtype == 3
+
+df_students_noaide <- df_students[!had_aide,]
+nrow(df_students_noaide)
+```
+
+```{r}
+# Filter for no aide and were in study all 4 years
+df_students_noaide_4years <- df_students[!had_aide &
+                                         !is.na(df_students$gkclasstype) & 
+                                         !is.na(df_students$g1classtype) & 
+                                         !is.na(df_students$g2classtype) & 
+                                         !is.na(df_students$g3classtype), ]
+
+nrow(df_students_noaide_4years)
+```
+
+
+
+## Getting class type groups (scrapped due to sample size)
+```{r}
+df_students_noaide_4years$class_group <- "Other" # initialize new columns
+
+# move column
+df_students_noaide_4years <- df_students_noaide_4years %>% 
+  relocate(class_group, .before = gkclasstype) %>%
+  relocate(yearssmall, .before = gkclasstype)
+```
+
+```{r}
+table(df_students$yearssmall)
+table(df_students_noaide_4years$yearssmall)
+```
+
+```{r}
+table(df_students$gkclasstype)
+table(df_students$g1classtype)
+table(df_students$g2classtype)
+table(df_students$g3classtype)
+
+table(df_students_noaide_4years$gkclasstype)
+table(df_students_noaide_4years$g1classtype)
+table(df_students_noaide_4years$g2classtype)
+table(df_students_noaide_4years$g3classtype)
+```
+
+
+```{r}
+# Change class type groups for each student
+
+# small 4 years
+ssss <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[ssss] <- "ssss"
+
+# small first 3 years, regular last year
+sssr <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[sssr] <- "sssr"
+
+
+# small first 2 years, regular last 2 years
+ssrr <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[ssrr] <- "ssrr"
+
+# small first year, regular last 3 years
+srrr <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[srrr] <- "srrr"
+
+# regular 4 years
+rrrr <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[rrrr] <- "rrrr"
+
+# regular first 3 years, small last year
+rrrs <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[rrrs] <- "rrrs"
+
+# regular first 2 year, small last 2 years
+rrss <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[rrss] <- "rrss"
+
+# regular first year, small last 3 years
+rsss <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[rsss] <- "rsss"
+
+# small 2 years, regular 1 year, then small last year
+ssrs <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[ssrs] <- "ssrs"
+
+# small first 1 year, regular 2 years, then small last year
+srrs <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[srrs] <- "srrs"
+
+
+# small first year, regular, small, regular
+srsr <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[srsr] <- "srsr"
+
+# small first year, regular, small, small
+srss <-  df_students_noaide_4years$gkclasstype == 1 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[srss] <- "srss"
+
+# regular first 2 years, small, regular
+rrsr <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 2 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[rrsr] <- "rrsr"
+
+# regular first year, small, small, regular
+rssr <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 1 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[rssr] <- "rssr"
+
+# regular first year, small, regular, small
+rsrs <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 1
+
+df_students_noaide_4years$class_group[rsrs] <- "rsrs"
+
+# regular first year, small, regular, regular
+rsrr <-  df_students_noaide_4years$gkclasstype == 2 & 
+  df_students_noaide_4years$g1classtype == 1 & 
+  df_students_noaide_4years$g2classtype == 2 &
+  df_students_noaide_4years$g3classtype == 2
+
+df_students_noaide_4years$class_group[rsrr] <- "rsrr"
+```
+
+
+```{r}
+table(df_students_noaide_4years$class_group)
+```
+The subset of all small and all regular has good sample size. The subsets of regular to small (rrrs, rrss, rsss) are also sufficient in which we could compare if multiple years leads to higher scores and we could comapre 3rd grade. However subsetting For the other way around small to regular (srrr, ssrr, sssr), the sample is lower. 
+
+
+## Class Type "Trend" Groups
+```{r}
+# initalize trend column
+df_students_noaide_4years$trend_all <- "Other"
+
+# move column
+df_students_noaide_4years <- df_students_noaide_4years %>% 
+  relocate(trend_all, .before = class_group) 
+```
+
+```{r}
+# Change class trend groups for each student
+
+# All 4 years of small vs regular has enough sample size so we can keep those the same
+df_students_noaide_4years$trend_all[df_students_noaide_4years$class_group == "ssss"] <- "constant_small"
+df_students_noaide_4years$trend_all[df_students_noaide_4years$class_group == "rrrr"] <- "constant_reg"
+
+# Small to regular trend (srrr, ssrr, sssr)
+subset <- c('srrr', 'ssrr', 'sssr')
+df_students_noaide_4years$trend_all[df_students_noaide_4years$class_group %in% subset] <- "small_to_reg"
+
+# Regular to small trend (rsss, rrss, rrrs)
+subset <- c('rsss', 'rrss', 'rrrs')
+df_students_noaide_4years$trend_all[df_students_noaide_4years$class_group %in% subset] <- "reg_to_small"
+```
+
+
+## Factor Labels
+```{r}
+# Set factors and labels
+
+# Urban and free lunch variables for question 1 
+df_students_noaide_4years$gksurban <- factor(df_students_noaide_4years$gksurban, labels = c("Inner City", "Suburban", "Rural", "Urban")) # urban
+
+
+# Gender, race, and free lunch variables for question 2
+df_students_noaide_4years$gender <- factor(df_students_noaide_4years$gender, labels = c("Male", "Female")) # gender
+
+df_students_noaide_4years <- subset(df_students_noaide_4years, race %in% c(1,2)) # subset for white and black only
+df_students_noaide_4years$race <- factor(df_students_noaide_4years$race, labels = c("White", "Black")) # race
+
+df_students_noaide_4years$g3freelunch <- factor(df_students_noaide_4years$g3freelunch, labels = c("Free", "Non-Free")) # free lunch for grade 3
+df_students_noaide_4years$gkfreelunch <- factor(df_students_noaide_4years$gkfreelunch, labels = c("Free", "Non-Free")) # free lunch for kindergarten
+```
+
+```{r}
+nrow(df_students_noaide_4years)
+```
+
+
+# Early Year Class Size vs Socioeconomic (Question 1)
+
+## Three Way Anova Model 
+```{r}
+# Urbanicity + free lunch
+model_fixed1 <- aov(gktmathss ~ gkclasstype + gkfreelunch + gksurban, data = df_students_noaide_4years)
+model_fixed2 <- aov(gktmathss ~ gkclasstype * gkfreelunch + gksurban, data = df_students_noaide_4years)
+model_fixed3 <- aov(gktmathss ~ gkclasstype * gksurban + gkfreelunch, data = df_students_noaide_4years)
+model_fixed4 <- aov(gktmathss ~ gkclasstype * gksurban * gkfreelunch, data = df_students_noaide_4years)
+```
+
+```{r}
+summary(model_fixed1)
+```
+
+```{r}
+summary(model_fixed2)
+```
+
+```{r}
+summary(model_fixed3)
+```
+
+```{r}
+summary(model_fixed4)
+```
+
+Model equation
+$$
+Y_{ijkl} = \mu + \alpha_i + \beta_j + \gamma_k + \epsilon_{ijkl} \\
+
+\mu\text{: overall mean} \\
+\alpha_i\text{: main effect of class size} \\
+\beta_j\text{: main effect of free lunch} \\
+\gamma_k\text{: main effect of urbanicity} \\
+\epsilon_{ijkl} \sim N(0, \sigma^2)
+$$
+
+```{r}
+AIC(model_fixed1, model_fixed2, model_fixed3, model_fixed4)
+BIC(model_fixed1, model_fixed2, model_fixed3, model_fixed4)
+```
+
+```{r}
+anova(model_fixed1, model_fixed2, model_fixed3, model_fixed4) 
+```
+
+```{r}
+# Table df
+f_table <- data.frame(
+  'Model' = c("Additive", "Interaction (classsize*freelunch)", "Interaction (classsize*urbanicity)", "Interaction (classsize*freelunch*urbanicity)"),
+  'Parameters' = c("8", "9", "11", "18"),
+  'Residual df' = c("1336", "1335", "1333", "1326"), 
+  'AIC' = c("13990", "13992", "13996", "14004"),
+  'BIC' = c("14026", "14034", "14048", "14093"),
+  'RSS' = c("2619558", "2619513", "2618711", "2608328"),
+  'Sum Sq.' = c("", "44.9", "802.4", "10382.6"),
+  'F-stat.' = c("", "0.0228", "0.2040", "0.7540"),
+  'p-val.' = c("", "0.8799", "0.8155", "0.6261"),
+  check.names = FALSE
+)
+
+# Create table
+kable(f_table, 
+      caption = "Table 2: Comparison of Three-way ANOVA Candidate Models by F Test", 
+      align = c('l', 'l', 'l', 'l')) %>%
+kable_classic(full_width = T, html_font = "Cambria") 
+```
+
+
+F test equation
+$$
+F = \frac{(RSS_1 - RSS_2)/(df_1 - df_2)}{RSS_2/df_2}
+$$
+
+
+```{r}
+anova(model_fixed1)
+confint(model_fixed1)
+```
+
+
+
+# Looking at Switch (Question 2)
+
+## Small class pattern
+```{r}
+# if we are examining grade 3 math, we have to look at students of similar groups
+# Subset for groups of interest: Compliers (constant class size) and Noncompliers (switch)
+subset <- c('rsss', 'rrss', 'rrrs', 'rrrr', 'ssss', 'srrr', 'ssrr', 'sssr')
+df <- df_students_noaide_4years[df_students_noaide_4years$class_group %in% subset, ] 
+
+nrow(df)
+table(df$trend_all)
+```
+
+```{r}
+
+# Table df
+trend_table <- data.frame(
+  'Trend' = c("Constant Regular Class Size", "Constant Small Class Size", "Regular to Small Class Size", "Small to Regular Class Size", "Total"),
+  'Sample Size' = c("365", "853", "151", "38", "1407"),
+  check.names = FALSE
+)
+
+# Create table
+kable(trend_table, 
+      caption = "Table 1: Trend Variable Sample Size post Filter", 
+      align = c('l', 'l', 'l', 'l')) %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>%
+  row_spec(5, bold = T, extra_css = "border-top: 1px solid black;")
+```
+
+
+## Model Selection
+```{r}
+library(lme4)
+library(lmerTest)
+
+
+# Baselines are constant regular class size, white, male, non-free lunch and teacher experience included
+
+
+# Mixed effects model where school is random intercept examining trend variable
+model_mixed1 <- lmer(g3tmathss ~ trend_all + gender + race + g3freelunch + g3tyears + (1 | g3schid), data = df) # additive
+model_mixed2 <- lmer(g3tmathss ~ trend_all * g3freelunch + gender + race + g3tyears + (1 | g3schid), data = df) # interaction trend * lunch
+model_mixed3 <- lmer(g3tmathss ~ trend_all * race + gender + g3freelunch + g3tyears + (1 | g3schid), data = df) # interaction trend * race
+```
+
+Model equation
+$$
+Y_{ij} = \beta_0 + \beta_1\text{trend} + \beta_2\text{gender} + \beta_3\text{race} + \beta_4\text{freelunch} + \beta_5\text{tyears} + b_{0j}+ \epsilon_{ij}
+
+\\
+b_{0j} \sim N(0, \sigma^2_b)\\
+\\
+\epsilon_{ij} \sim N(0, \sigma^2) 
+$$
+
+
+
+```{r}
+# Looking at larger dataset so use BIC for parsomonious model
+BIC(model_mixed1, model_mixed2, model_mixed3)
+```
+
+
+```{r}
+# Likelihood ratio test
+anova(model_mixed1, model_mixed2)
+anova(model_mixed1, model_mixed3)
+```
+
+
+```{r}
+# Table df
+lrt_table <- data.frame(
+  'Model' = c("Additive", "Interaction (trend*freelunch)", "Interaction (trend*race)"),
+  'Parameters' = c("10", "13", "13"),
+  'AIC' = c("12928", "12927", "12980"),
+  'BIC' = c("12980", "12994", "12999"),
+  '-2log(L)' = c("12908", "12901", "12906"), 
+  'Chisq' = c("", "7.7188", "2.1038"),
+  'p-value' = c("", "0.0522", "0.5511"),
+  check.names = FALSE
+)
+
+# Create table
+kable(lrt_table, 
+      caption = "Table 3: Comparison of Mixed Effects Candidate Models by Likelihood Ratio Test", 
+      align = c('l', 'l', 'l', 'l')) %>%
+kable_classic(full_width = F, html_font = "Cambria") 
+```
+
+
+Although the interactions model with lunch had a slightly lower BIC, the likelihood ratio test was not significant indicating the additive model is sufficient.
+```{r}
+summary(model_mixed1)
+```
+
+```{r}
+# Table df
+modelresults_table <- data.frame(
+  'Variable' = c("Intercept", "trendConstantSmall", "trendRegtoSmall", "trendSmalltoReg", "genderFemale", "raceBlack", "Non-free Lunch", "Teacher Years Experience"),
+  'Estimate' = c("615.9284", "5.6360", "3.5772", "13.8712", "-1.1203", "-13.4432", "16.5513", "0.2121"),
+  'Standard Error' = c("3.9218", "2.3992", "3.7306", "7.2142", "1.9861", "3.4631", "2.4110", "0.1334"),
+  'df' = c("485.1381", "1263.1583", "1280.9287", "1204.8663", "1232.0915", "383.7018", "1279.9178", "1171.7302"),
+  't-statistic' = c("157.051", "2.349", "0.959", "1.923", "-0.564", "-3.882", "6.865", "1.589"), 
+  'p-value' = c("<2e-16", "0.0190", "0.3378", "0.0547", "0.5628", "1.22e-4", "1.04e-11", "0.1123"),
+  check.names = FALSE
+)
+
+# Create table
+kable(modelresults_table, 
+      caption = "Table 3: Results of Mixed Effects Additive Model (Fixed Variables)", 
+      align = c('l', 'l', 'l', 'l')) %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+
+# Table df
+modelresults_table2 <- data.frame(
+  'Group' = c("School ID (intercept)", "Residual"),
+  'Variance' = c("192.2", "1224.7"),
+  'Standard Deviation' = c("13.85", "35.00"),
+  check.names = FALSE
+)
+
+# Create table
+kable(modelresults_table2, 
+      caption = "Table 4: Results of Mixed Effects Additive Model (Random Variable)", 
+      align = c('l', 'l', 'c', 'm')) %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+```
+
+
+
+
+```{r}
+anova(model_mixed1)
+confint(model_mixed1)
+```
+
+
+
+
+## Noncomplier Random (prob scrap)
+```{r}
+# Compares baselines in kindergarden between compliers and non-compliers  
+t.test(gktmathss ~ trend_all, data = subset(df, trend_all %in% c("constant_reg", "reg_to_small"))) 
+t.test(gktmathss ~ trend_all, data = subset(df, trend_all %in% c("constant_small", "small_to_reg"))) 
+```
+
+
+
+
+# Sensitivity Analysis
+
+## Intraclass Correlation Coefficient (ICC)
+```{r}
+# ICC for trend model
+var_comp <- as.data.frame(VarCorr(model_mixed1))
+v_school <- var_comp$vcov[1]
+v_residual <- var_comp$vcov[2]
+
+v_school / (v_school + v_residual)
+```
+
+Around 13.56% of student's score is due to school effects when considered the model for trend
+
+## Assumptions
+```{r}
+# residuals vs fitted plot
+plot(model_mixed1) 
+```
+
+
+
