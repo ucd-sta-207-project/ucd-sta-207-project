@@ -1,0 +1,547 @@
+---
+title: "207 EDA"
+author: "Ziang Gao"
+date: "2026-03-01"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+library(haven)
+library(haven)
+library(dplyr)
+library(ggplot2)
+com_students <- read_sav("Comparison_Students.sav")
+com_students
+
+
+high_schools <- read_sav("STAR_High_Schools.sav")
+high_schools
+
+k3_schools <- read_sav("STAR_K-3_Schools.sav")
+k3_schools
+
+students <- read_sav("STAR_Students.sav")
+students
+```
+
+### Bin socioeconomic status proportions
+```{r}
+summary(k3_schools$SCHLURBN)
+table(k3_schools$SCHLURBN)
+
+```
+
+```{r}
+k3_schools <- k3_schools %>%
+  mutate(
+    school_urban = factor(
+      SCHLURBN,
+      levels = c(1,2,3,4),
+      labels = c("Inner City", "Suburban", "Rural", "Urban")
+    )
+  )
+
+```
+
+```{r}
+# Frequency table
+table(k3_schools$school_urban)
+```
+
+```{r}
+#dist of school urbanicity
+ggplot(k3_schools, aes(x = school_urban)) +
+  geom_bar(fill = "steelblue") +
+  labs(
+    title = "Distribution of School Urbanicity",
+    x = "School Location Type",
+    y = "Number of Schools"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# percent table
+ggplot(k3_schools, aes(x = school_urban)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "steelblue") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Proportion of School Urbanicity",
+    x = "School Location Type",
+    y = "Percentage of Schools"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+urban_dist <- k3_schools %>%
+  count(school_urban) %>%
+  mutate(percent = n / sum(n))
+```
+
+```{r}
+#pie chart
+ggplot(urban_dist, aes(x = "", y = percent, fill = school_urban)) +
+  geom_col(width = 1) +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = scales::percent(percent)),
+            position = position_stack(vjust = 0.5)) +
+  labs(
+    title = "Distribution of School Urbanicity",
+    fill = "School Type"
+  ) +
+  theme_void()
+```
+
+### lunch
+```{r}
+summary(k3_schools$GKFRLNCH)
+
+```
+
+```{r}
+sum(is.na(k3_schools$GKFRLNCH))
+```
+
+```{r}
+ggplot(k3_schools, aes(x = GKFRLNCH)) +
+  geom_histogram(binwidth = 10, fill = "skyblue", color = "black") +
+  labs(
+    title = "Distribution of Free/Reduced Lunch Percentage",
+    x = "Percent Students Receiving Free/Reduced Lunch",
+    y = "Number of Schools"
+  ) +
+  theme_minimal()
+```
+
+# Bin socioeconomic status proportions
+```{r}
+#Higher percent, low Socioeconomic Status
+k3_schools <- k3_schools %>%
+  mutate(
+    ses_bin = cut(
+      GKFRLNCH,
+      breaks = c(0,25,50,75,100),
+      labels = c("High SES","Middle SES","Low SES","Very Low SES"),
+      include.lowest = TRUE
+    )
+  )
+```
+
+```{r}
+table(k3_schools$ses_bin)
+```
+
+```{r}
+k3_schools %>%
+  count(ses_bin) %>%
+  mutate(percent = n/sum(n)*100)
+```
+
+```{r}
+#bar chart
+ggplot(k3_schools, aes(x = ses_bin)) +
+  geom_bar(fill = "steelblue") +
+  labs(
+    title = "School Socioeconomic Status Distribution",
+    x = "SES Category (Based on Free Lunch Percentage)",
+    y = "Number of Schools"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# pie chart
+ses_dist <- k3_schools %>%
+  count(ses_bin) %>%
+  mutate(percent = n/sum(n))
+
+ggplot(ses_dist, aes(x="", y=percent, fill=ses_bin)) +
+  geom_col(width=1) +
+  coord_polar(theta="y") +
+  geom_text(aes(label=scales::percent(percent)),
+            position=position_stack(vjust=0.5)) +
+  labs(
+    title="School SES Distribution",
+    fill="SES Level"
+  ) +
+  theme_void()
+
+```
+
+# Grades (gtmathss, gtreadss) vs gender
+
+### grade k math
+```{r}
+summary(students$gktmathss)
+summary(students$gktreadss)
+
+table(students$gender)
+```
+
+```{r}
+students$gender <- factor(
+  students$gender,
+  levels = c(1,2),
+  labels = c("Male","Female")
+)
+```
+
+```{r}
+ggplot(students, aes(x = gender, y = gktmathss, fill = gender)) +
+  geom_boxplot() +
+  labs(
+    title = "Math Scores by Gender grade k",
+    x = "Gender",
+    y = "Math Score"
+  ) +
+  theme_minimal()
+```
+
+### grade k reading
+```{r}
+ggplot(students, aes(x = gender, y = gktreadss, fill = gender)) +
+  geom_boxplot() +
+  labs(
+    title = "Reading Scores by Gender grade k",
+    x = "Gender",
+    y = "Reading Score"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+students %>%
+  group_by(gender) %>%
+  summarise(
+    mean_math = mean(gktmathss, na.rm = TRUE),
+    mean_read = mean(gktreadss, na.rm = TRUE)
+  )
+```
+
+### k-3 math in one chart
+```{r}
+long_data <- students %>%
+  pivot_longer(
+    cols = c(gktmathss, g1tmathss, g2tmathss, g3tmathss),
+    names_to = "grade",
+    values_to = "math_score"
+  ) %>%
+  mutate(
+    gender = factor(gender),
+    grade = recode(grade,
+      "gktmathss" = "Kindergarten",
+      "g1tmathss" = "Grade 1",
+      "g2tmathss" = "Grade 2",
+      "g3tmathss" = "Grade 3"
+    ),
+    grade = factor(grade, levels = c(
+      "Kindergarten",
+      "Grade 1",
+      "Grade 2",
+      "Grade 3"
+    ))
+  ) %>%
+  filter(!is.na(gender))   
+```
+
+```{r}
+table(long_data$grade)
+
+
+```
+
+```{r}
+ggplot(long_data, aes(x = gender, y = math_score, fill = gender)) +
+  geom_boxplot() +
+  facet_wrap(~grade) +
+  labs(
+    title = "Math Scores by Gender Across Grades",
+    x = "Gender",
+    y = "Math Score"
+  ) +
+  theme_minimal()
+```
+
+### k-3 reading
+```{r}
+long_read <- students %>%
+  pivot_longer(
+    cols = c(gktreadss, g1treadss, g2treadss, g3treadss),
+    names_to = "grade",
+    values_to = "read_score"
+  ) %>%
+  mutate(
+    gender = factor(gender),
+    
+    grade = recode(grade,
+      "gktreadss" = "Kindergarten",
+      "g1treadss" = "Grade 1",
+      "g2treadss" = "Grade 2",
+      "g3treadss" = "Grade 3"
+    ),
+    
+    grade = factor(grade, levels = c(
+      "Kindergarten",
+      "Grade 1",
+      "Grade 2",
+      "Grade 3"
+    ))
+  ) %>%
+  filter(!is.na(gender))
+```
+
+```{r}
+long_read <- long_data %>%
+  mutate(grade = recode(grade,
+    gktreadss = "Kindergarten",
+    g1treadss = "Grade 1",
+    g2treadss = "Grade 2",
+    g3treadss = "Grade 3"
+  ))
+
+```
+
+```{r}
+ggplot(long_read, aes(x = gender, y = read_score, fill = gender)) +
+  geom_boxplot() +
+  facet_wrap(~grade) +
+  labs(
+    title = "Reading Scores by Gender Across Grades",
+    x = "Gender",
+    y = "Reading Score"
+  ) +
+  theme_minimal()
+
+```
+
+
+
+
+# grade math vs race
+```{r}
+table(students$race)
+```
+
+```{r}
+students$race <- factor(
+  students$race,
+  levels = c(1,2,3,4,5,6),
+  labels = c("White","Black","Asian","Hispanic","Native American","Other")
+)
+```
+
+```{r}
+long_math_race <- students %>%
+  pivot_longer(
+    cols = c(gktmathss, g1tmathss, g2tmathss, g3tmathss),
+    names_to = "grade",
+    values_to = "math_score"
+  ) %>%
+  filter(!is.na(race))
+```
+
+```{r}
+long_math_race <- long_math_race %>%
+  mutate(grade = recode(grade,
+    gktmathss = "Kindergarten",
+    g1tmathss = "Grade 1",
+    g2tmathss = "Grade 2",
+    g3tmathss = "Grade 3"
+  ))
+```
+
+```{r}
+ggplot(long_math_race, aes(x = race, y = math_score, fill = race)) +
+  geom_boxplot() +
+  facet_wrap(~grade) +
+  labs(
+    title = "Math Scores by Race Across Grades",
+    x = "Race",
+    y = "Math Score"
+  ) +
+  theme_minimal() + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+
+### reading vs race
+```{r}
+long_read_race <- students %>%
+  pivot_longer(
+    cols = c(gktreadss, g1treadss, g2treadss, g3treadss),
+    names_to = "grade",
+    values_to = "read_score"
+  ) %>%
+  filter(!is.na(race))
+
+long_read_race <- long_read_race %>%
+  mutate(
+    grade = recode(grade,
+      gktreadss = "Kindergarten",
+      g1treadss = "Grade 1",
+      g2treadss = "Grade 2",
+      g3treadss = "Grade 3"
+    )
+  )
+
+ggplot(long_read_race, aes(x = race, y = read_score, fill = race)) +
+  geom_boxplot() +
+  facet_wrap(~grade) +
+  labs(
+    title = "Reading Scores by Race Across Grades",
+    x = "Race",
+    y = "Reading Score"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+
+
+### Average grade per class size groups
+```{r}
+students <- students %>%
+  mutate(
+    gkclasst = factor(gkclasstype, levels=c(1,2,3),
+                      labels=c("Small","Regular","Regular+Aide")),
+    g1classt = factor(g1classtype, levels=c(1,2,3),
+                      labels=c("Small","Regular","Regular+Aide")),
+    g2classt = factor(g2classtype, levels=c(1,2,3),
+                      labels=c("Small","Regular","Regular+Aide")),
+    g3classt = factor(g3classtype, levels=c(1,2,3),
+                      labels=c("Small","Regular","Regular+Aide"))
+  )
+```
+
+```{r}
+students <- students %>%
+  mutate(
+    small_years =
+      (gkclasst=="Small") +
+      (g1classt=="Small") +
+      (g2classt=="Small") +
+      (g3classt=="Small")
+  )
+```
+
+```{r}
+# since grade 3 is the end of our test, so i will use grade3 grade as response.
+students %>%
+  group_by(small_years) %>%
+  summarise(
+    avg_math = mean(g3tmathss, na.rm=TRUE),
+    avg_read = mean(g3treadss, na.rm=TRUE)
+  )
+```
+
+```{r}
+students %>%
+  group_by(small_years) %>%
+  summarise(avg_math = mean(g3tmathss, na.rm=TRUE)) %>%
+  ggplot(aes(x = small_years, y = avg_math)) +
+  geom_point(size=3) +
+  geom_line() +
+  labs(
+    title="Average Grade 3 Math Score by Years in Small Class",
+    x="Years in Small Class",
+    y="Average Math Score"
+  )
+```
+
+```{r}
+students %>%
+  group_by(small_years) %>%
+  summarise(avg_read = mean(g3treadss, na.rm = TRUE)) %>%
+  ggplot(aes(x = small_years, y = avg_read)) +
+  geom_point(size = 3) +
+  geom_line() +
+  labs(
+    title = "Average Grade 3 Reading Score by Years in Small Class",
+    x = "Years in Small Class",
+    y = "Average Reading Score"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+students %>%
+  group_by(small_years) %>%
+  summarise(
+    avg_math = mean(g3tmathss, na.rm = TRUE),
+    avg_read = mean(g3treadss, na.rm = TRUE)
+  ) %>%
+  pivot_longer(
+    cols = c(avg_math, avg_read),
+    names_to = "subject",
+    values_to = "avg_score"
+  ) %>%
+  mutate(subject = recode(subject,
+                          avg_math = "Math",
+                          avg_read = "Reading")) %>%
+  ggplot(aes(x = small_years, y = avg_score, color = subject)) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Average Grade 3 Scores by Years in Small Class",
+    x = "Years in Small Class",
+    y = "Average Score",
+    color = "Subject"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+students %>%
+  filter(!is.na(race)) %>%   # 去掉 NA
+  ggplot(aes(x = race, fill = race)) +
+  geom_bar() +
+  labs(
+    title = "Distribution of Student Race",
+    x = "Race",
+    y = "Number of Students"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+students %>%
+  filter(!is.na(race)) %>%
+  mutate(
+    race_group = case_when(
+      race == "White" ~ "White",
+      race == "Black" ~ "Black",
+      TRUE ~ "Other"
+    ),
+    race_group = factor(race_group, levels = c("White", "Black", "Other")) 
+  ) %>%
+  ggplot(aes(x = race_group, fill = race_group)) +
+  geom_bar() +
+  labs(
+    title = "Student Race Distribution",
+    x = "Race",
+    y = "Number of Students"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
