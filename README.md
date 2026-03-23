@@ -7,7 +7,7 @@ See the [Google Drive](https://drive.google.com/drive/folders/1de9zstaY9SrZHYXb4
 
 ## Navigating the GitHub
 
-Project files are organized into folders. At the top level, you can find the official publication, `STA_207_Project_Group_2.{pdf, html}`, as both a PDF and an HTML file.
+Project files are organized into folders. At the top level, you can find the official publication, `STA_207_Project_Group_2.{pdf, html}`, as both a PDF and an HTML file, as well as the presentation slides, `STA_207_Project_Group_2_Presentation.pdf`.
 
 * `./data/` contains the raw data files contained within the Project STAR dataset;
 * `./drafts/` contains early work that can be ignored, as more robust versions of these files exist elsewhere;
